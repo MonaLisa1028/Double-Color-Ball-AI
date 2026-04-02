@@ -1,10 +1,10 @@
-name: Update Lottery Data
+name: Update Lottery Data and AI Predictions
 
 on:
   schedule:
-    # 每天北京时间 22:00 (UTC 14:00) 运行
+    # 每天北京时间 22:00 (UTC 14:00) 自动运行
     - cron: '0 14 * * *'
-  workflow_dispatch: # 允许手动触发
+  workflow_dispatch: # 允许你随时在 Actions 页面手动点击按钮触发
 
 jobs:
   update-data:
@@ -26,34 +26,43 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install requests beautifulsoup4
+          pip install requests beautifulsoup4 zhipuai
 
-      - name: Run lottery data fetcher
+      - name: Run Lottery Fetcher and AI Prediction
+        # 这里注入你在 GitHub Secrets 中配置的 Key
+        env:
+          AI_API_KEY: ${{ secrets.AI_API_KEY }}
+          AI_BASE_URL: ${{ secrets.AI_BASE_URL }}
         run: |
+          # 1. 进入抓取目录更新开奖历史
           cd fetch_history
           python3 fetch_lottery_history.py
+          cd ..
+          
+          # 2. 运行根目录下的 AI 预测脚本
+          # 它会读取最新的历史记录并调用智谱接口
+          python3 generate_ai_prediction.py
 
       - name: Check for changes
         id: check_changes
         run: |
-          git diff --quiet data/ || echo "changed=true" >> $GITHUB_OUTPUT
+          # 检查 data 文件夹和 fetch_history 文件夹下的 json 是否有变动
+          git add data/*.json fetch_history/*.json
+          git diff --staged --quiet || echo "changed=true" >> $GITHUB_OUTPUT
 
       - name: Commit and push if changed
         if: steps.check_changes.outputs.changed == 'true'
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git add data/lottery_history.json fetch_history/lottery_data.json
-          git commit -m "chore: auto-update lottery data $(date +'%Y-%m-%d %H:%M:%S')"
+          # 提交所有更新后的数据文件
+          git commit -m "chore: auto-update lottery results and zhipuai predictions $(date +'%Y-%m-%d %H:%M:%S')"
           git push
 
-      - name: Summary
-        if: steps.check_changes.outputs.changed == 'true'
+      - name: Execution Summary
+        if: success()
         run: |
-          echo "✅ Lottery data updated successfully" >> $GITHUB_STEP_SUMMARY
-          echo "Updated at: $(date)" >> $GITHUB_STEP_SUMMARY
-
-      - name: No changes
-        if: steps.check_changes.outputs.changed != 'true'
-        run: |
-          echo "ℹ️ No new lottery data available" >> $GITHUB_STEP_SUMMARY
+          echo "### 🚀 自动化运行完成" >> $GITHUB_STEP_SUMMARY
+          echo "* 开奖数据已同步" >> $GITHUB_STEP_SUMMARY
+          echo "* 智谱 AI 预测已生成" >> $GITHUB_STEP_SUMMARY
+          echo "* 网页数据已自动更新" >> $GITHUB_STEP_SUMMARY
