@@ -19,12 +19,13 @@ if not API_KEY:
     print("❌ 请设置环境变量 AI_API_KEY")
     sys.exit(1)
 
-# 模型配置列表
+# 修改后的模型配置列表（全部使用智谱模型）
 MODELS = [
-    {"id": "gpt-4o", "name": "GPT-5", "model_id": "SSB-Team-001"},
-    {"id": "claude-3-5-sonnet-20241022", "name": "Claude 4.5", "model_id": "team_alpha_arena_v1"},
-    {"id": "gemini-2.5-flash", "name": "Gemini 2.5", "model_id": "Gemini2.5"},
-    {"id": "deepseek-chat", "name": "DeepSeek R1", "model_id": "DeepseekR1"}
+    {"id": "glm-4-plus", "name": "智谱 GLM-4-Plus", "model_id": "ZP-001"},
+    {"id": "glm-4-0520", "name": "智谱 GLM-4-0520", "model_id": "ZP-002"},
+    {"id": "glm-4-air", "name": "智谱 GLM-4-Air", "model_id": "ZP-003"},
+    {"id": "glm-4-flash", "name": "智谱 GLM-4-Flash", "model_id": "ZP-004"},
+    {"id": "glm-4-9b", "name": "智谱 GLM-4-9B", "model_id": "ZP-005"}
 ]
 
 # 文件路径
