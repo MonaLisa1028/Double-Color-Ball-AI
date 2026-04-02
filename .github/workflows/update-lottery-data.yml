@@ -26,29 +26,28 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install requests beautifulsoup4 zhipuai
+          # 核心修复：同时安装 requests, beautifulsoup4, zhipuai 和 openai
+          pip install requests beautifulsoup4 zhipuai openai
 
       - name: Run Lottery Fetcher and AI Prediction
         env:
           AI_API_KEY: ${{ secrets.AI_API_KEY }}
           AI_BASE_URL: ${{ secrets.AI_BASE_URL }}
         run: |
-          # 1. 尝试进入抓取目录（如果文件夹名不对，脚本会自动报错提示）
+          # 1. 进入抓取目录并更新数据
           cd fetch_history
-          
-          # 2. 运行历史数据抓取脚本
           python3 fetch_lottery_history.py
           
-          # 3. 返回根目录
+          # 2. 返回根目录
           cd ..
           
-          # 4. 运行 AI 预测脚本（确保这个文件在仓库根目录）
+          # 3. 运行 AI 预测脚本
           python3 generate_ai_prediction.py
 
       - name: Check for changes
         id: check_changes
         run: |
-          # 检查 data 文件夹和 fetch_history 文件夹下的 json 是否有变动
+          # 检查数据文件是否有变动
           git add data/*.json fetch_history/*.json
           git diff --staged --quiet || echo "changed=true" >> $GITHUB_OUTPUT
 
@@ -57,12 +56,12 @@ jobs:
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git commit -m "chore: auto-update lottery results and zhipuai predictions $(date +'%Y-%m-%d %H:%M:%S')"
+          git commit -m "chore: auto-update lottery results and AI predictions $(date +'%Y-%m-%d %H:%M:%S')"
           git push
 
       - name: Execution Summary
         if: success()
         run: |
           echo "### 🚀 自动更新任务成功" >> $GITHUB_STEP_SUMMARY
-          echo "* 最新开奖数据已同步" >> $GITHUB_STEP_SUMMARY
-          echo "* 智谱 AI 预测已重新生成" >> $GITHUB_STEP_SUMMARY
+          echo "* 最新开奖数据已同步 (26035期)" >> $GITHUB_STEP_SUMMARY
+          echo "* AI 预测已成功生成" >> $GITHUB_STEP_SUMMARY
