@@ -2,9 +2,9 @@ name: Update Lottery Data and AI Predictions
 
 on:
   schedule:
-    # 每天北京时间 22:00 (UTC 14:00) 运行
+    # 每天北京时间 22:00 (UTC 14:00) 自动运行
     - cron: '0 14 * * *'
-  workflow_dispatch: # 允许手动点击按钮触发
+  workflow_dispatch: # 允许你在 Actions 页面手动点击按钮测试
 
 jobs:
   update-data:
@@ -17,6 +17,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           persist-credentials: true
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -26,7 +27,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          # 核心修复：同时安装 requests, beautifulsoup4, zhipuai 和 openai
+          # 安装所有必要的库，包括 openai 和 zhipuai
           pip install requests beautifulsoup4 zhipuai openai
 
       - name: Run Lottery Fetcher and AI Prediction
@@ -34,34 +35,43 @@ jobs:
           AI_API_KEY: ${{ secrets.AI_API_KEY }}
           AI_BASE_URL: ${{ secrets.AI_BASE_URL }}
         run: |
-          # 1. 进入抓取目录并更新数据
+          # 1. 进入抓取目录并更新历史开奖数据
           cd fetch_history
           python3 fetch_lottery_history.py
           
           # 2. 返回根目录
           cd ..
           
-          # 3. 运行 AI 预测脚本
+          # 3. 运行 AI 预测脚本 (生成 ai_predictions.json)
           python3 generate_ai_prediction.py
 
       - name: Check for changes
         id: check_changes
         run: |
-          # 检查数据文件是否有变动
-          git add data/*.json fetch_history/*.json
-          git diff --staged --quiet || echo "changed=true" >> $GITHUB_OUTPUT
+          # 只精确添加核心数据文件，跳过那些被 gitignore 拦截的备份文件
+          git add data/lottery_history.json fetch_history/lottery_data.json data/ai_predictions.json || echo "部分文件不存在，继续执行"
+          
+          # 检查是否有文件真正发生了变动
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "检测到数据更新，准备提交"
+          else
+            echo "数据未发生变化，无需更新"
+          fi
 
       - name: Commit and push if changed
         if: steps.check_changes.outputs.changed == 'true'
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
+          # 仅提交上面 git add 进去的核心数据
           git commit -m "chore: auto-update lottery results and AI predictions $(date +'%Y-%m-%d %H:%M:%S')"
-          git push
+          git push origin main
 
       - name: Execution Summary
         if: success()
         run: |
-          echo "### 🚀 自动更新任务成功" >> $GITHUB_STEP_SUMMARY
-          echo "* 最新开奖数据已同步 (26035期)" >> $GITHUB_STEP_SUMMARY
-          echo "* AI 预测已成功生成" >> $GITHUB_STEP_SUMMARY
+          echo "### 🚀 自动化流程运行成功" >> $GITHUB_STEP_SUMMARY
+          echo "* **数据抓取**: 已完成" >> $GITHUB_STEP_SUMMARY
+          echo "* **AI 预测**: 智谱 GLM 模型已生成新号码" >> $GITHUB_STEP_SUMMARY
+          echo "* **网页部署**: 变更已推送到 GitHub，Vercel 将在几分钟内自动更新网页" >> $GITHUB_STEP_SUMMARY
